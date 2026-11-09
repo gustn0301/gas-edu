@@ -109,12 +109,12 @@ addEventListener('resize',resize);resize();
 
 const S={MENU:0,RUN:1,FORK:2,PATH:3,FALL:4,ANGEL:5,EXP:6,FINISH:7};
 let state=S.MENU,qi=0,score=0,road=0,frame=0,stateT=0,results=[];
-const P={x:0,tx:0,ty:0,tsc:1,off:0,vy:0,rot:0,sc:1,cycle:0,pick:null};
+const P={p:0,x:0,tx:0,ty:0,tsc:1,off:0,vy:0,rot:0,sc:1,cycle:0,pick:null};
 const A={x:0,y:0,ty:0,on:false,wing:0};
 let parts=[];
 function spark(x,y,c,s,vx,vy,l){parts.push({x,y,c,s,vx,vy,l,m:l})}
 function setState(s){state=s;stateT=0}
-function resetPlayer(){P.x=P.tx=P.ty=0;P.tsc=1;P.off=0;P.vy=0;P.rot=0;P.sc=1;P.pick=null}
+function resetPlayer(){P.p=0;P.x=P.tx=P.ty=0;P.tsc=1;P.off=0;P.vy=0;P.rot=0;P.sc=1;P.pick=null}
 
 function cloud(x,y,s){ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.beginPath();ctx.arc(0,0,22,0,7);ctx.arc(28,-12,26,0,7);ctx.arc(58,0,22,0,7);ctx.fill();ctx.restore()}
 
@@ -142,6 +142,12 @@ function sign(x,y,t,c){
 }
 
 const PY=()=>H*.7;
+function pathPos(e,k){
+ const hy=H*.42,sy=H*.56,bw=Math.min(W*.65,520),w=40+(bw-40)*(sy-hy)/(H-hy),ex=W*.22,mid=sy-(sy-hy)*.55;
+ if(e<.4){const q=e/.4;return{x:k*w*.25*q,y:PY()+(sy-PY())*q}}
+ const u=e-.4,a=(1-u)*(1-u),b=2*u*(1-u),c=u*u;
+ return{x:k*(a*w*.25+b*w*.31+c*ex),y:a*sy+b*mid+c*hy};
+}
 function trunk(){
  const hy=H*.42,vx=W/2,tw=40,bw=Math.min(W*.65,520);
  const g=ctx.createLinearGradient(0,hy,0,H);g.addColorStop(0,'#475569');g.addColorStop(1,'#1e293b');
@@ -170,8 +176,8 @@ function drawRoad(){
    ctx.beginPath();ctx.moveTo(vx+k*w*.25,sy);ctx.quadraticCurveTo(vx+k*w*.31,mid,vx+k*ex,hy);ctx.stroke();ctx.setLineDash([]);
   });
   if(P.pick&&P.pick!==QS[qi].a&&state>=S.PATH){
-   const cx=vx+(P.pick==='O'?-1:1)*W*.17;
-   ctx.save();ctx.fillStyle='#020617';ctx.beginPath();ctx.ellipse(cx,H*.5,W*.07,H*.025,0,0,7);ctx.fill();
+   const pt=pathPos(1,P.pick==='O'?-1:1);
+   ctx.save();ctx.fillStyle='#020617';ctx.beginPath();ctx.ellipse(vx+pt.x,pt.y,W*.045,H*.02,0,0,7);ctx.fill();
    ctx.strokeStyle='#dc2626';ctx.lineWidth=3;ctx.stroke();ctx.restore();
   }
   sign(vx-W*.31,H*.47,'O','#10b981');sign(vx+W*.31,H*.47,'X','#f43f5e');
@@ -241,13 +247,13 @@ function startGame(){
 function makeChoice(c){
  if(state!==S.FORK)return;
  play('click');
- P.pick=c;P.tx=c==='O'?-W*.17:W*.17;P.ty=-H*.19;P.tsc=.6;
+ P.pick=c;P.p=0;P.tx=pathPos(1,c==='O'?-1:1).x;
  $('choices').classList.remove('show');
  const ok=c===QS[qi].a;
  setState(S.PATH);
  if(ok){
   score++;results.push(true);buildDots();play('correct');
-  for(let i=0;i<30;i++)spark(W/2+P.tx,H*.52,'#34d399',Math.random()*6+2,(Math.random()-.5)*8,(Math.random()-.5)*8,45);
+  for(let i=0;i<30;i++)spark(W/2+P.tx,pathPos(1,c==='O'?-1:1).y,'#34d399',Math.random()*6+2,(Math.random()-.5)*8,(Math.random()-.5)*8,45);
   setTimeout(next,1600);
  }else{
   results.push(false);buildDots();play('wrong');
@@ -300,7 +306,7 @@ function loop(){
   road+=9;P.cycle+=.25;
   if(stateT>70){setState(S.FORK);$('choices').classList.add('show')}
  }else if(state===S.FORK)P.cycle+=.08;
- else if(state===S.PATH){road+=6;P.cycle+=.3;P.x+=(P.tx-P.x)*.1;P.off+=(P.ty-P.off)*.08;P.sc+=(P.tsc-P.sc)*.08}
+ else if(state===S.PATH){P.cycle+=.3;P.p=Math.min(1,P.p+.018);const e=P.p*P.p*(3-2*P.p),pt=pathPos(e,P.pick==='O'?-1:1);P.x=pt.x;P.off=pt.y-PY();P.sc=1-.4*e}
  else if(state===S.FALL){P.off+=P.vy;P.vy+=.5;P.rot+=.08;P.sc=Math.max(.2,P.sc-.015)}
  else if(state===S.ANGEL){
   A.y+=(A.ty-A.y)*.08;
